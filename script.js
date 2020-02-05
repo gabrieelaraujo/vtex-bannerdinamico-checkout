@@ -11,40 +11,37 @@ $(document).ready(function() {
     
     // Verifica se está na página de carrinho procurando o elemento    
     if ($('.cart-template-holder').length > 0) {
-    
-      //Executa ao clicar no botão calcular após preenchimento do CEP 
-        $('#cart-shipping-calculate').on('click', function() {
+        var helper = {
+            // Formata o valor no padrão em R$
+            toReal: function(val) {
+                val = val / 100;
+                val = val.toFixed(2).toString().replace('.', ',');
+                val = val.replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1.");
+                return val
+            },
+            // Formata o CEP, deixando somente números
+            formatarCep: function(val) {
+                cep = val.replace(/\D/g, '')
+                return cep
+            },
+        }
+        var validacep = /^[0-9]{8}$/;
+        var valorFreteGratis;     
         
-            var helper = {
-                // Formata o valor no padrão em R$
-                toReal: function(val) {
-                    val = val / 100;
-                    val = val.toFixed(2).toString().replace('.', ',');
-                    val = val.replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1.");
-                    return val
-                },
-                // Formata o CEP, deixando somente números
-                formatarCep: function(val) {
-                    cep = val.replace(/\D/g, '')
-                    return cep
-                },
-            }
-            
-            
-            var cep = helper.formatarCep($('#summary-postal-code').val());
-            var validacep = /^[0-9]{8}$/;
-            var valorFreteGratis;
-            
+        function verificar(cep){
+
+            var cep = helper.formatarCep(cep);
+
             // Se existir o CEP
             if (cep) {
-            
+                        
                 // Verifica se o CEP é válido e está no padrão
                 if (validacep.test(cep)) {
                 
-                  // Puxa as informações baseado no CEP informado 
-                  // Foi utilizado a API do VIACEP
+                // Puxa as informações baseado no CEP informado 
+                // Foi utilizado a API do VIACEP
                     $.getJSON("https://viacep.com.br/ws/" + cep + "/json/?callback=", function(dados) {
-                      // Verifica se não teve retorno de erro
+                    // Verifica se não teve retorno de erro
                         if (!("erro" in dados)) {
                             if (dados.uf == "AC") {
                                 if (dados.localidade == "Rio Branco") {
@@ -254,9 +251,40 @@ $(document).ready(function() {
                     })
                 }
             }
-            $('section#fretegratis').show()
-        })
+            $('section#fretegratis').show();
+        }
+
+        // Se CEP já foi inserido e foi adicionado novos produtos
+        // Verifica se o campo do CEP já está preenchido
+        // Timeout de 1seg espera de carregamento dos elementos necessários
+        setTimeout(function(){
+            var check = $('#summary-postal-code').val();
+            if(check){
+                let cep = check;
+                return verificar(cep);
+            }
+       }, 1000);
+
+     
+        //Executa ao clicar no botão calcular após preenchimento do CEP 
+        $('#cart-shipping-calculate').on('click', function() {
+            let cep = $('#summary-postal-code').val();
+            return verificar(cep);              
+        
+        });
+
+        // Se deletar algum item, faz a atualização novamente do frete grátis
+        // Somente acontece se o CEP já foi inserido antes.
+        $(document).on('click', '.item-link-remove', function() {
+            let cep = $('#summary-postal-code').val();
+            // Verifica se já tem o CEP inserido           
+            if( cep ){
+                return verificar(cep);
+            }
+        });
+        
+
     } else {
         $('section#fretegratis').hide()
     }
-})
+});
